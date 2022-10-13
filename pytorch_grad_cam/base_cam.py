@@ -72,6 +72,8 @@ class BaseCAM:
                                                    requires_grad=True)
 
         outputs = self.activations_and_grads(input_tensor)
+        if isinstance(outputs, tuple):
+            outputs = outputs[0]
         if targets is None:
             target_categories = np.argmax(outputs.cpu().data.numpy(), axis=-1)
             targets = [ClassifierOutputTarget(
@@ -107,10 +109,12 @@ class BaseCAM:
             input_tensor: torch.Tensor,
             targets: List[torch.nn.Module],
             eigen_smooth: bool) -> np.ndarray:
+        # activations_list [ndarray: (1, 1280, 20, 20)]
         activations_list = [a.cpu().data.numpy()
                             for a in self.activations_and_grads.activations]
         grads_list = [g.cpu().data.numpy()
                       for g in self.activations_and_grads.gradients]
+        # target_size (1280, 1280)
         target_size = self.get_target_width_height(input_tensor)
 
         cam_per_target_layer = []
@@ -130,6 +134,7 @@ class BaseCAM:
                                      layer_activations,
                                      layer_grads,
                                      eigen_smooth)
+            # 將cam中為負值的數字變為0
             cam = np.maximum(cam, 0)
             scaled = scale_cam_image(cam, target_size)
             cam_per_target_layer.append(scaled[:, None, :])
